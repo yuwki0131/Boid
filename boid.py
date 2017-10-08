@@ -7,7 +7,7 @@ import pygame.locals as pyglocal
 
 class Parameter:
     too_close = 100
-    too_far = 30
+    too_far = 60
     # speed of boid
     speed_limit = 5
     # number of boids
@@ -129,7 +129,9 @@ def draw_all():
     # draw boids
     for boid in boids:
         xy = int(boid.x), int(boid.y)
-        pygame.draw.circle(screen, boid.color, xy, 2)
+        dxdy = int(boid.x + boid.dx * 2), int(boid.y + boid.dy * 2)
+        pygame.draw.circle(screen, boid.color, xy, 3)
+        pygame.draw.line(screen, boid.color, xy, dxdy)
     # mouse position
     pygame.draw.rect(screen, (255, 0, 0), pyglocal.Rect(dest.x, dest.y, 4, 4))
     pygame.display.update()
