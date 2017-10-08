@@ -5,14 +5,13 @@ import pygame
 import pygame.gfxdraw
 import pygame.locals as pyglocal
 
-pygame.init()
-
-clock = pygame.time.Clock()
-
-screen = pygame.display.set_mode((1200, 600))
-
-boids_size = 100
-speed_limit = 5
+class Parameter:
+    too_close = 100
+    too_far = 30
+    # speed of boid
+    speed_limit = 5
+    # number of boids
+    boids_size = 100
 
 class Field:
     x = 1200
@@ -41,9 +40,9 @@ class Boid:
 
     def regularize_speed(self):
         speed = math.sqrt(self.dx ** 2 + self.dy ** 2)
-        if speed_limit < speed:
-            self.dx = self.dx / speed * speed_limit
-            self.dy = self.dy / speed * speed_limit
+        if Parameter.speed_limit < speed:
+            self.dx = self.dx / speed * Parameter.speed_limit
+            self.dy = self.dy / speed * Parameter.speed_limit
 
     def set_vector(self, ax, ay, ac):
         if not ac == 0:
@@ -59,64 +58,56 @@ class Distance:
     x = 0
     y = 0
 
-field = Field()
-
-boids = [Boid(Field.random_x(), Field.random_x()) for _ in range(boids_size)]
-
-dest = Destination()
-
-dists = [Distance() for _ in range(int(boids_size * (boids_size - 1) / 2))]
-
 def get_index(i, j):
     if i == j:
         return 0
     elif j < i:
-        return int((boids_size * 2 - j - 1) * j / 2 + i - j - 1)
+        return int((Parameter.boids_size * 2 - j - 1) * j / 2 + i - j - 1)
     else:
-        return int((boids_size * 2 - i - 1) * i / 2 + j - i - 1)
+        return int((Parameter.boids_size * 2 - i - 1) * i / 2 + j - i - 1)
 
 def update_distance():
-    for i in range(boids_size):
-        for j in range(boids_size):
-            dists[get_index(i, j)] = boids[i].distance(boids[j])
+    for i, boid in enumerate(boids):
+        for j, other in enumerate(boids):
+            dists[get_index(i, j)] = boid.distance(other)
+
+def accelerate():
+    for i, boid in enumerate(boids):
+        ax, ay = 0, 0
+        ac = 0
+        # fall earch other
+        for j, other in enumerate(boids):
+            distance = dists[get_index(i, j)]
+            if not (i == j) and not distance < 0.01:
+                if abs(distance) < Parameter.too_close:
+                    ax += (boid.x - other.x) / distance
+                    ay += (boid.y - other.y) / distance
+                    ac += 1
+                elif Parameter.too_far < abs(distance):
+                    # too far
+                    ax -= (boid.x - other.x) / distance
+                    ay -= (boid.y - other.y) / distance
+                    ac += 1
+                else:
+                    # move in paralell
+                    ax += other.dx
+                    ay += other.dy
+                    ac += 1
+        # mouse tracking
+        boid.set_vector(ax, ay, ac)
+        # regularize speed
+        boid.regularize_speed()
 
 def update_position():
     for boid in boids:
         x = boid.x + boid.dx
         y = boid.y + boid.dy
-        if not 0 <= x <= field.x:
+        if not 0 <= x <= Field.x:
             x = boid.x - boid.dx
-        if not 0 <= y <= field.y:
+        if not 0 <= y <= Field.y:
             y = boid.y - boid.dy
         boid.x = x
         boid.y = y
-
-def accelerate():
-    for i in range(boids_size):
-        ax, ay = 0, 0
-        ac = 0
-        # fall earch other
-        for j in range(boids_size):
-            distance = dists[get_index(i, j)]
-            if not (i == j) and not distance < 0.01:
-                if abs(distance) < 100:
-                    ax += (boids[i].x - boids[j].x) / distance
-                    ay += (boids[i].y - boids[j].y) / distance
-                    ac += 1
-                elif 30 < abs(distance):
-                    # too far
-                    ax -= (boids[i].x - boids[j].x) / distance
-                    ay -= (boids[i].y - boids[j].y) / distance
-                    ac += 1
-                else:
-                    # move in paralell
-                    ax += boids[j].dx
-                    ay += boids[j].dy
-                    ac += 1
-        # mouse tracking
-        boids[i].set_vector(ax, ay, ac)
-        # regularize speed
-        boids[i].regularize_speed()
 
 def scinario():
     update_distance()
@@ -144,6 +135,7 @@ def draw_all():
     pygame.display.update()
 
 def routine():
+    clock = pygame.time.Clock()
     while(True):
         scinario()
         clock.tick(1000)
@@ -151,4 +143,9 @@ def routine():
         draw_all()
 
 if __name__ == '__main__':
+    boids = [Boid(Field.random_x(), Field.random_x()) for _ in range(Parameter.boids_size)]
+    dest = Destination()
+    dists = [Distance() for _ in range(int(Parameter.boids_size * (Parameter.boids_size - 1) / 2))]
+    pygame.init()
+    screen = pygame.display.set_mode((1200, 600))
     routine()
